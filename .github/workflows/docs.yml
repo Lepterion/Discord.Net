@@ -6,8 +6,6 @@ on:
       - '*'
     paths:
       - 'docs/**'
-    branches:
-      - 'dev'
   workflow_dispatch:
   pull_request:
     paths:
@@ -29,7 +27,7 @@ jobs:
         dotnet-version: 8.0.x
 
     - name: Setup DocFX
-      run: dotnet tool install -g docfx --version 2.75.2
+      run: dotnet tool install -g docfx --version 2.76.0
 
     - name: Build DNet docs
       run: docfx docs/docfx.json
@@ -51,6 +49,9 @@ jobs:
       with:
         name: static-docs
         path: output/
+    
+    - name: Add CNAME
+      run: echo "${{ vars.DOCS_DOMAIN }}" > output/CNAME
     
     - name: Auth DNet bot
       id: bot_auth

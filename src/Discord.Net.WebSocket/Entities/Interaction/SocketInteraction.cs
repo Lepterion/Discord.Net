@@ -26,6 +26,14 @@ namespace Discord.WebSocket
         /// </remarks>
         public ISocketMessageChannel Channel { get; private set; }
 
+        /// <summary>
+        ///     Gets the channel this interaction was used in.
+        /// </summary>
+        /// <remarks>
+        ///     This property can contain a partial channel object. <see langword="null"/> if no channel was passed with the interaction.
+        /// </remarks>
+        public IMessageChannel InteractionChannel { get; private set; }
+
         /// <inheritdoc/>
         public ulong? ChannelId { get; private set; }
 
@@ -73,8 +81,17 @@ namespace Discord.WebSocket
         /// <inheritdoc/>
         public ulong ApplicationId { get; private set; }
 
+        /// <inheritdoc/>
+        public InteractionContextType? ContextType { get; private set; }
+
+        /// <inheritdoc/>
+        public GuildPermissions Permissions { get; private set; }
+
         /// <inheritdoc cref="IDiscordInteraction.Entitlements" />
         public IReadOnlyCollection<RestEntitlement> Entitlements { get; private set; }
+
+        /// <inheritdoc/>
+        public IReadOnlyDictionary<ApplicationIntegrationType, ulong> IntegrationOwners { get; private set; }
 
         internal SocketInteraction(DiscordSocketClient client, ulong id, ISocketMessageChannel channel, SocketUser user)
             : base(client, id)
@@ -149,6 +166,34 @@ namespace Discord.WebSocket
                 : null;
 
             Entitlements = model.Entitlements.Select(x => RestEntitlement.Create(Discord, x)).ToImmutableArray();
+
+            IntegrationOwners = model.IntegrationOwners;
+            ContextType = model.ContextType.IsSpecified
+                ? model.ContextType.Value
+                : null;
+
+            Permissions = new GuildPermissions((ulong)model.ApplicationPermissions);
+
+            InteractionChannel = Channel;
+            if (model.Channel.IsSpecified && InteractionChannel is null)
+            {
+                InteractionChannel = model.Channel.Value.Type switch
+                {
+                    ChannelType.News or
+                        ChannelType.Text or
+                        ChannelType.Voice or
+                        ChannelType.Stage or
+                        ChannelType.NewsThread or
+                        ChannelType.PrivateThread or
+                        ChannelType.PublicThread or
+                        ChannelType.Media or
+                        ChannelType.Forum
+                        => RestChannel.Create(Discord, model.Channel.Value) as IMessageChannel,
+                    ChannelType.DM => RestDMChannel.Create(Discord, model.Channel.Value),
+                    ChannelType.Group => RestGroupChannel.Create(Discord, model.Channel.Value),
+                    _ => null
+                };
+            }
         }
 
         /// <summary>
